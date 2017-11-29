@@ -10,11 +10,6 @@ int main(int argc, char *argv[]){
 	int i = 1;
 	while ( (rez = getopt(argc,argv,"ab:C::d")) != -1)
 	{
-		if (argv[i][0] != '-') 
-		{
-			printf("default = %s\n\n", argv[i]);
-			/* break; */
-		}
 		switch (rez)
 		{
 			case 'a': printf("found argument \"a\".\n"); break;
@@ -22,11 +17,17 @@ int main(int argc, char *argv[]){
 			case 'C': printf("found argument \"C = %s\".\n",optarg); break;
 			case 'd': printf("found argument \"d\"\n"); break;
 			case '?': printf("Error found !\n");break;
-			/* default:  printf("found argument default = %s\".\n",optarg); break; */
+			/* default:  printf("found argument default = %s\".\n",argv[i]); break; */
 		};
 		
-		i++;
 	};
+
+	for (i = optind; i < argc; i++)
+	{
+		if (argv[i][0] != '-') 
+			printf("default = %s\n\n", argv[i]);
+	}
+		
 
 };
 
