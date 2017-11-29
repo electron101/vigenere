@@ -15,19 +15,22 @@ int main()
 	int x = 0, y = 0; //Координаты нового символа из таблицы Виженера
 	int registr = 0; //Регистр символа
 	char dublicat; //Дубликат прописной буквы
-	//Формирование таблицы Виженера на алфавите латиницы
+	
+	/* Создание таблицы Виженера на алфавите латиницы */
 	int shift = 0;
 	char **tabula_recta = new char *[26]; //Таблица Виженера
-	for (int i=0;i<26;i++)
+	for (int i = 0; i < 26; i++)
 		tabula_recta[i] = new char [26];
+
 	string alfabet = "abcdefghijklmnopqrstuvwxyz"; //Алфавит латиницы
 
-	//Формирование таблицы
+	/* Заполнение таблицы */
 	for (int i = 0; i < 26; i++)
 		for (int j = 0; j < 26; j++)
 		{
 			shift = j + i;
-			if (shift >= 26) shift = shift % 26;
+			if (shift >= 26) 
+				shift = shift % 26;
 			tabula_recta[i][j] = alfabet[shift];
 		}
 
@@ -65,6 +68,7 @@ int main()
 					//Поиск в первом столбце строки, начинающейся с символа ключа
 					int l = 0;
 					flag = false;
+					
 					//Пока не найден символ
 					while ((l < 26) && (flag == false))
 					{
@@ -136,6 +140,7 @@ int main()
 			{
 				key_on_s += key[i % key.length()];
 			}
+			
 			//Дешифрование при помощи таблицы
 			for (int i = 0; i < s.length(); i++)
 			{
