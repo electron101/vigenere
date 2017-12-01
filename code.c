@@ -16,8 +16,8 @@
  * Аргументы программы можут быть размещены в любом порядке, но 
  * после небулевских опций всегда должно идти их значение. Если 
  * аргументы заданы некорректно - вернуть EXIT_FAILURE. 
+ *
  * Результаты выдавать в виде текста в формате: 
- * 
  * KEY
  * ENCODEDORDECODEDMESSAGE
  * 
@@ -42,8 +42,12 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>		/* для EXIT_SUCCESS и EXIT_FAILURE */
 #include <unistd.h>		/* для функции getopt() */
+
+#define MAXBUF  5000		/* максимальная длина буфера */
+typedef enum {false, true} bool;
 
 /* Глобальная структура с аргументами 
  */
@@ -59,39 +63,39 @@ struct global_args_t {
 
 static const char *opt_string = "k:df:o:eh?";	/* строка с опциями getopt() */
 
+
+
 /* Сообщение с информацией об опциях 
  */
 void usage(char *progname) 
 {
-	printf("Использование:\n");
+	printf("\nИспользование:\n\n");
 	printf("%s [ключ] \n\n", progname);
 	printf("Ключи:\n");
 	printf(" -k \t ключ шифровки/дешифровки\n");
-	printf(" -d \t опция включения режима дешифровки\n");
+	printf(" -d \t ключ включения режима дешифровки\n");
 	printf(" -f \t файл для чтения сообщения\n");
 	printf(" -o \t файл для записи сообщения\n");
 	printf(" -e \t примеры использования программы\n");
-	printf(" -h \t Вывод этого сообщения\n\n");
+	printf(" -h \t вывод этого сообщения\n\n");
 	exit( EXIT_FAILURE );
 }
 
 void example(char *progname) 
 {
+	printf("\nПримеры использования программы:\n\n");
 	printf("%s \"Some message to encode\" -k \"RANDOM\"\n", progname);
 	printf("%s -d \"jozh aqjsnjs ff drfcpv\" -k \"RANDOM\"\n", progname);
 	printf("%s \"jozh aqjsnjs ff drfcpv\" -d\n", progname);
 	printf("%s -f \"to_encode.txt\" -k \"RANDOM\"\n", progname);
 	printf("%s -k \"RANDOM\" -d -f \"to_decode.txt\"\n", progname);
 	printf("%s -d -f \"to_decode.txt\" -k \"RANDOM\" -o \"decoded.txt\"\n", progname);
+	printf("\n");
 	exit( EXIT_FAILURE );
 }
 
-int main( int argc, char *argv[] )
+void validate_args(int argc, char *argv[])
 {
-	int opt = 0;
-	opterr	= 0;		/* отключим вывод ошибок в getopt()*/
-	int i	= 0;
-	
 	/* Инизиализация структуры 
 	 */
 	global_args.key_string	 = NULL;		/* -k ключ */
@@ -101,6 +105,9 @@ int main( int argc, char *argv[] )
 	global_args.out_filename = NULL;		/* -f ключ */
 	global_args.out_file	 = NULL;
 	global_args.msg		 = NULL;
+	
+	int opt = 0;
+	opterr	= 0;		/* отключим вывод ошибок в getopt()*/
 	
 	/* Обработки параметров в программе. 
 	 * Как только getopt() распознает параметр, конструкция switch 
@@ -141,31 +148,215 @@ int main( int argc, char *argv[] )
 				break;
 		}
 	}
-	
-	/* global_args.inputFiles = argv + optind; */
-	/* global_args.numInputFiles = argc - optind; */
+}
 
-	/* convert_document(); */
+int main( int argc, char *argv[] )
+{
+	if (argc < 2)			/* если ключи не заданы */
+		usage(argv[0]);
+
+	validate_args(argc, argv);	/* проверка входных параметров */
+	
+	int	i = 0;
+	int	j = 0;
+	char	s[MAXBUF];
 
 	for (i = optind; i < argc; i++)
 	{
 		if (argv[i][0] != '-') 
 		{
-			/* printf("default = %s\n\n", argv[i]); */
 			global_args.msg = argv[i];
 			break;
 		}
 	}
-	
 	printf ("k = %s\n", global_args.key_string);
 	printf ("d = %d\n", global_args.decryption);
 	printf ("f = %s\n", global_args.in_filename);
 	printf ("o = %s\n", global_args.out_filename);
 	printf ("msg = %s\n", global_args.msg);
 
+
+	/* Создание таблицы Виженера на алфавите латиницы */
+
+	int shift = 0;
+	/* Таблица Виженера */
+	char **tabula_recta = (char **) malloc(sizeof(char *) * 26);
 	
-	/* for (i = 0; i < argc; i++) */
-	/* 	printf ("argv = %s\n", argv[i]); */
-	
+	for (i = 0; i < 26; i++)
+		tabula_recta[i] = (char *) malloc(sizeof(char) * 26);
+
+	const char *alfabet = "abcdefghijklmnopqrstuvwxyz"; 
+
+	/* Заполнение таблицы */
+	for (i = 0; i < 26; i++)
+	{
+		for (j = 0; j < 26; j++) 
+		{
+			shift = j + i;
+			if (shift >= 26) 
+				shift = shift % 26;
+			tabula_recta[i][j] = alfabet[shift];
+			printf(tabula_recta
+		}
+	}
+
+
+
+	/* Если ключ d не задан значит выбрана шифрация 
+	 */
+	if (global_args.decryption == 0)
+	{
+		if (global_args.key_string == NULL)	/* если -k не задан */
+			usage(argv[0]);
+
+		/* Если задан ключ f и в тоже время указано сообщение
+		 */
+		if (global_args.in_filename != NULL && global_args.msg != NULL)
+			usage(argv[0]);
+
+		if (global_args.in_filename == NULL)	/* если -f не задан */
+		{
+			if (global_args.msg != NULL)	/* если msg есть */
+			{
+				/* записываем в s сообщение из msg 
+				 * предотвратим переполнение буфера
+				 * а также выставим в ручную \0
+				 */
+				strncpy (s, global_args.msg, sizeof(s) - 1);
+				s[sizeof(s) - 1] = '\0';
+				
+				printf ("s msg = %s\nn", s);
+			}
+			else 
+				usage(argv[0]);
+		}
+		else		/* читаем строку из файла */
+		{
+			if ( (global_args.in_file = 
+				fopen(global_args.in_filename, "r")) == NULL)
+			{
+				printf("Ошибка чтения файла %s \n", 
+						global_args.in_filename);
+				return EXIT_FAILURE;
+			}
+			fscanf (global_args.in_file, "%s", s);
+			fclose(global_args.in_file);
+			printf ("s file = %s\n\n", s);
+		}
+		
+		/*---------*/
+		/* Шифруем */
+		/*---------*/
+
+		
+		char	result[MAXBUF];		//Строка - результат
+		char	*key = "";		//Строка - ключ 
+		char	*key_on_s = "";
+		bool	flag;
+		int	x= 0, y = 0;		//Координаты нового символа из таблицы Виженера
+		int	registr = 0; //Регистр символа
+		char	dublicat; //Дубликат прописной буквы
+
+		//Формирование строки, длиной шифруемой, состоящей из повторений ключа
+		for (i = 0; i < strlen(s); i++)
+			key_on_s += key[i % strlen(global_args.key_string)];
+
+		//Шифрование при помощи таблицы
+		for (i = 0; i < strlen(s); i++)
+		{
+			//Если нешифруемый символ
+			if (((int)(s[i]) < 65) || ((int)(s[i]) > 122))
+				strcat(result, s[i]);
+			else
+			{
+				//Поиск в первом столбце строки, начинающейся с символа ключа
+				int l = 0;
+				flag = false;
+
+				//Пока не найден символ
+				while ((l < 26) && (flag == false))
+				{
+					//Если символ найден
+					if (key_on_s[i] == tabula_recta[l][0])
+					{
+						//Запоминаем в х номер строки
+						x = l;
+						flag = true;
+					}
+					l++;
+				}
+				//Уменьшаем временно регистр прописной буквы
+				if (((int)(s[i]) <= 90) && ((int)(s[i]) >= 65))
+				{
+					dublicat = (char)((int)(s[i]) + 32);
+					registr = 1;
+				}
+				else
+				{
+					registr = 0;
+					dublicat = s[i];
+				}
+				l = 0;
+				flag = false;
+				//Пока не найден столбец в первой строке с символом строки
+				while ((l < 26) && (flag == false))
+				{
+					if (dublicat == tabula_recta[0][l])
+					{
+						//Запоминаем номер столбца
+						y = l;
+						flag = true;
+					}
+					l++;
+				}
+				//Увеличиваем регистр буквы до прописной
+				if (registr == 1)
+				{
+					/* Изменяем символ на первоначальный 
+					 * регистр
+					 */
+					dublicat = tabula_recta[x][y] - 32;
+
+					/* допишем в result символ из dublicat
+					 * вычислим текущую длинну result 
+					 * и сравним с максимальной - 2 
+					 * (2 потомучто, один символ из dublicat
+					 * второй это терминальный ноль).
+					 * код эквивалентен следующему выражению
+					 * result += dublicat;
+					 */
+					size_t cur_len = strlen(result);
+					if(cur_len < MAXBUF - 2) {
+						result[cur_len] = dublicat;
+						result[cur_len + 1] = '\0';
+					}
+				}
+				else
+				{
+					size_t cur_len = strlen(result);
+					if(cur_len < MAXBUF - 2) {
+						result[cur_len] = 
+							tabula_recta[x][y];
+						result[cur_len + 1] = '\0';
+					}
+				}
+			}
+		}
+		
+		printf("\n\nEncryption complete!\n");
+		printf("Result: %s\n\n", result);
+
+
+
+
+	}
+
+
+
+
+
+
+
+
 	return EXIT_SUCCESS;
 }

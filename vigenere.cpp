@@ -5,67 +5,69 @@
 #include <fstream>
 #include <unistd.h>		/* Для функции getopt() */
 
-[НЕТ]	Программа принимает сообщения и ключ в аргументах командной строчки :
-[НЕТ]	-k - опция, которая означает, что следующий аргумент - ключ шифровки/дешифровки
-[НЕТ]	-d - булевская опция включения режима дешифровки
-[НЕТ]	Если ключ не задан, попробовать дешифровать сообщение автоматически.
-[НЕТ]	-f - сообщение считывается с файла, название которого задано в следующем аргументе.
-[НЕТ]	-о - зашифрованное сообщение записать в файл, название которого задано в следующем аргументе.
-
-Аргументы программы можут быть размещены в любом порядке, но после небулевских опций всегда должно идти их значение.
-Если аргументы заданы некорректно - вернуть EXIT_FAILURE.
-Результаты выдавать в виде текста в формате: файл result.txt
-Если не задано опции -о , результат записывать в консоль, иначе - в указанный опцией файл.
-Если автоматическая дешифровка не реализована - возвращать статус программы EXIT_FAILURE.
-
-./a.out "Some message to encode" -k "RANDOM"
-./a.out -d "jozh aqjsnjs ff drfcpv" -k "RANDOM"
-./a.out "jozh aqjsnjs ff drfcpv" -d
-./a.out -f "to_encode.txt" -k "RANDOM"
-./a.out -k "RANDOM" -d -f "to_decode.txt"
-./a.out -d -f "to_decode.txt" -k "RANDOM" -o "decoded.txt"
-
-void usage(char *progname) 
-{
-    printf("Использование:\n");
-    printf("%s [ключ] \n\n", progname);
-    printf("Ключи:\n");
-    printf(" -k \t ключ шифровки/дешифровки\n");
-    printf(" -d \t опция включения режима дешифровки\n");
-    printf(" -f \t файл для чтения сообщения\n");
-    printf(" -o \t файл для записи сообщения\n");
-    printf(" -h \t Вывод этого сообщения\n\n");
-    exit(1);
-}
-
-
-/* Проверяет параметры при запуске */
-void validateargs(int argc, char **argv)
-{
-	int rez=0;
-	opterr=0;	/* Отключить вывод ошибок */
-	while ( (rez = getopt(argc,argv,"k:df:o:")) != -1)
-	{
-		switch (rez)
-		{
-			case 'k': printf("found argument \"k= %s\".\n",optarg); break;
-			case 'd': printf("found argument \"d\"\n"); break;
-			case 'f': printf("found argument \"f = %s\".\n",optarg); break;
-			case 'o': printf("found argument \"o = %s\".\n",optarg); break;
-			case '?': printf("Error found !\n");break;
-		}
-	}
-
-return;
-}
+// [НЕТ]	Программа принимает сообщения и ключ в аргументах командной строчки :
+// [НЕТ]	-k - опция, которая означает, что следующий аргумент - ключ шифровки/дешифровки
+// [НЕТ]	-d - булевская опция включения режима дешифровки
+// [НЕТ]	Если ключ не задан, попробовать дешифровать сообщение автоматически.
+// [НЕТ]	-f - сообщение считывается с файла, название которого задано в следующем аргументе.
+// [НЕТ]	-о - зашифрованное сообщение записать в файл, название которого задано в следующем аргументе.
+//
+// Аргументы программы можут быть размещены в любом порядке, но после небулевских опций всегда должно идти их значение.
+// Если аргументы заданы некорректно - вернуть EXIT_FAILURE.
+// Результаты выдавать в виде текста в формате: файл result.txt
+// Если не задано опции -о , результат записывать в консоль, иначе - в указанный опцией файл.
+// Если автоматическая дешифровка не реализована - возвращать статус программы EXIT_FAILURE.
+//
+// ./a.out "Some message to encode" -k "RANDOM"
+// ./a.out -d "jozh aqjsnjs ff drfcpv" -k "RANDOM"
+// ./a.out "jozh aqjsnjs ff drfcpv" -d
+// ./a.out -f "to_encode.txt" -k "RANDOM"
+// ./a.out -k "RANDOM" -d -f "to_decode.txt"
+// ./a.out -d -f "to_decode.txt" -k "RANDOM" -o "decoded.txt"
+//
+// void usage(char *progname) 
+// {
+//     printf("Использование:\n");
+//     printf("%s [ключ] \n\n", progname);
+//     printf("Ключи:\n");
+//     printf(" -k \t ключ шифровки/дешифровки\n");
+//     printf(" -d \t опция включения режима дешифровки\n");
+//     printf(" -f \t файл для чтения сообщения\n");
+//     printf(" -o \t файл для записи сообщения\n");
+//     printf(" -h \t Вывод этого сообщения\n\n");
+//     exit(1);
+// }
+//
+//
+// #<{(| Проверяет параметры при запуске |)}>#
+// void validateargs(int argc, char **argv)
+// {
+// 	int rez=0;
+// 	opterr=0;	#<{(| Отключить вывод ошибок |)}>#
+// 	while ( (rez = getopt(argc,argv,"k:df:o:")) != -1)
+// 	{
+// 		switch (rez)
+// 		{
+// 			case 'k': printf("found argument \"k= %s\".\n",optarg); break;
+// 			case 'd': printf("found argument \"d\"\n"); break;
+// 			case 'f': printf("found argument \"f = %s\".\n",optarg); break;
+// 			case 'o': printf("found argument \"o = %s\".\n",optarg); break;
+// 			case '?': printf("Error found !\n");break;
+// 		}
+// 	}
+//
+// return;
+// }
 
 using namespace std;
 int main(int argc, char** argv)
 {
 	/* проверка параметров при запуске */
-	validateargs(argc, argv);
+	// validateargs(argc, argv);
 	
 	int k; //Переменная выбора - шифрование/дешифрование
+
+
 	string result = ""; //Строка - результат
 	string key = ""; //Строка - ключ 
 	string key_on_s = "";
@@ -167,6 +169,7 @@ int main(int argc, char** argv)
 					if (registr == 1)
 					{
 						//Изменяем символ на первоначальный регистр
+
 						dublicat = char((int)(tabula_recta[x][y]) - 32);
 						result += dublicat;
 					}
