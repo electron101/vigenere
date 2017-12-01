@@ -196,7 +196,6 @@ int main( int argc, char *argv[] )
 			if (shift >= 26) 
 				shift = shift % 26;
 			tabula_recta[i][j] = alfabet[shift];
-			printf(tabula_recta
 		}
 	}
 
@@ -250,7 +249,7 @@ int main( int argc, char *argv[] )
 
 		
 		char	result[MAXBUF];		//Строка - результат
-		char	*key = "";		//Строка - ключ 
+		char	*key = global_args.key_string;		//Строка - ключ 
 		char	*key_on_s = "";
 		bool	flag;
 		int	x= 0, y = 0;		//Координаты нового символа из таблицы Виженера
@@ -259,7 +258,16 @@ int main( int argc, char *argv[] )
 
 		//Формирование строки, длиной шифруемой, состоящей из повторений ключа
 		for (i = 0; i < strlen(s); i++)
-			key_on_s += key[i % strlen(global_args.key_string)];
+			key_on_s += key[i % strlen(key)];			
+
+		/* strcat(key_on_s, key[i % strlen(global_args.key_string)]); */
+		/* { */
+			/* size_t cur_len = strlen(key_on_s); */
+			/* if(cur_len < MAXBUF - 2) { */
+			/* 	key_on_s[cur_len] = key[i % strlen(global_args.key_string)]; */
+			/* 	key_on_s[cur_len + 1] = '\0'; */
+			/* } */
+		/* } */
 
 		//Шифрование при помощи таблицы
 		for (i = 0; i < strlen(s); i++)
