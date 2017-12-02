@@ -200,190 +200,306 @@ int main( int argc, char *argv[] )
 	}
 
 
-
-	/* Если ключ d не задан значит выбрана шифрация 
-	 */
-	if (global_args.decryption == 0)
+	/*-----------------------------*/
+	/* Проверка входных параметров */
+	/*-----------------------------*/
+	if (global_args.key_string == NULL)	/* если -k не задан */
 	{
-		if (global_args.key_string == NULL)	/* если -k не задан */
+		if (global_args.decryption == 0)
 			usage(argv[0]);
-
-		/* Если задан ключ f и в тоже время указано сообщение
-		 */
-		if (global_args.in_filename != NULL && global_args.msg != NULL)
-			usage(argv[0]);
-
-		if (global_args.in_filename == NULL)	/* если -f не задан */
-		{
-			if (global_args.msg != NULL)	/* если msg есть */
-			{
-				/* записываем в s сообщение из msg 
-				 * предотвратим переполнение буфера
-				 * а также выставим в ручную \0
-				 */
-				strncpy (s, global_args.msg, sizeof(s) - 1);
-				s[sizeof(s) - 1] = '\0';
-				
-				printf ("s msg = %s\nn", s);
-			}
-			else 
-				usage(argv[0]);
-		}
-		else		/* читаем строку из файла */
-		{
-			if ( (global_args.in_file = 
-				fopen(global_args.in_filename, "r")) == NULL)
-			{
-				printf("Ошибка чтения файла %s \n", 
-						global_args.in_filename);
-				return EXIT_FAILURE;
-			}
-			fscanf (global_args.in_file, "%s", s);
-			fclose(global_args.in_file);
-			printf ("s file = %s\n\n", s);
-		}
-		
-		/*---------*/
-		/* Шифруем */
-		/*---------*/
-
-		
-		// + 1 для терминального нуля в конце
-		char	result[strlen(s) + 1];		//Строка - результат
-		char	*key = global_args.key_string;		//Строка - ключ 
-		//char	*key_on_s = "";
-		char	key_on_s[strlen(s) + 1];
-		bool	flag;
-		int	x= 0, y = 0;		//Координаты нового символа из таблицы Виженера
-		int	registr = 0; //Регистр символа
-		char	dublicat; //Дубликат прописной буквы
-
-		key_on_s[0] = '\0' ;
-		result[0] = '\0' ;
-
-		//Формирование строки, длиной шифруемой, состоящей из повторений ключа
-		for (i = 0; i < strlen(s); i++)
-		{
-			size_t cur_len = strlen(key_on_s);
-			if(cur_len < strlen(s)) {
-				key_on_s[cur_len] = key[i % strlen(key)];
-				key_on_s[cur_len + 1] = '\0';
-			}
-		}
-
-		//Шифрование при помощи таблицы
-		for (i = 0; i < strlen(s); i++)
-		{
-			//Если нешифруемый символ
-			if (((int)(s[i]) < 65) || ((int)(s[i]) > 122))
-			{
-				size_t cur_len = strlen(result);
-				if(cur_len < strlen(s)) {
-					result[cur_len] = s[i];
-					result[cur_len + 1] = '\0';
-				}
-			}
-			else
-			{
-				//Поиск в первом столбце строки, начинающейся с символа ключа
-				int l = 0;
-				flag = false;
-
-				//Пока не найден символ
-				while ((l < 26) && (flag == false))
-				{
-					//Если символ найден
-					if (key_on_s[i] == tabula_recta[l][0])
-					{
-						//Запоминаем в х номер строки
-						x = l;
-						flag = true;
-					}
-					l++;
-				}
-				//Уменьшаем временно регистр прописной буквы
-				if (((int)(s[i]) <= 90) && ((int)(s[i]) >= 65))
-				{
-					dublicat = (char)((int)(s[i]) + 32);
-					registr = 1;
-				}
-				else
-				{
-					registr = 0;
-					dublicat = s[i];
-				}
-				l = 0;
-				flag = false;
-				//Пока не найден столбец в первой строке с символом строки
-				while ((l < 26) && (flag == false))
-				{
-					if (dublicat == tabula_recta[0][l])
-					{
-						//Запоминаем номер столбца
-						y = l;
-						flag = true;
-					}
-					l++;
-				}
-				//Увеличиваем регистр буквы до прописной
-				if (registr == 1)
-				{
-					/* Изменяем символ на первоначальный 
-					 * регистр
-					 */
-					dublicat = tabula_recta[x][y] - 32;
-
-					/* допишем в result символ из dublicat
-					 * вычислим текущую длинну result 
-					 * и сравним с максимальной s 
-					 * код эквивалентен следующему выражению
-					 * result += dublicat;
-					 */
-					size_t cur_len = strlen(result);
-					if(cur_len < strlen(s)) {
-						result[cur_len] = dublicat;
-						result[cur_len + 1] = '\0';
-					}
-				}
-				else
-				{
-					size_t cur_len = strlen(result);
-					if(cur_len < strlen(s)) {
-						result[cur_len] = 
-							tabula_recta[x][y];
-						result[cur_len + 1] = '\0';
-					}
-				}
-			}
-		}
-
-		/* Вывод результата. В файл или на консоль */
-
-		/* Если задан ключ -o делаем вывод в файл
-		*/
-		if (global_args.out_filename != NULL)
-		{
-			if ( (global_args.out_file = 
-				fopen(global_args.out_filename, "w")) == NULL)
-			{
-				printf("Ошибка чтения файла %s \n", 
-						global_args.out_filename);
-				printf("Результат будет выведен сюда: \n");
-				printf("\nКлюч: \n", key);
-				printf("Сообщение: %s\n\n", result);
-				return EXIT_FAILURE;
-			}
-			fprintf(global_args.out_file, "%s\n", key);
-			fprintf(global_args.out_file, "%s\n", result);
-			fclose(global_args.out_file);	/* закрываем файл */
-		}
 		else
+			printf("код автоматической дешивровки");
+	}
+
+	/* Если задан ключ f и в тоже время указано сообщение
+	 */
+	if (global_args.in_filename != NULL && global_args.msg != NULL)
+		usage(argv[0]);
+
+	if (global_args.in_filename == NULL)	/* если -f не задан */
+	{
+		if (global_args.msg != NULL)	/* если msg есть */
 		{
-			printf("\n Ключ: \n", key);
-			printf("Шифр: %s\n\n", result);
+			/* записываем в s сообщение из msg 
+			 * предотвратим переполнение буфера
+			 * а также выставим в ручную \0
+			 */
+			strncpy (s, global_args.msg, sizeof(s) - 1);
+			s[sizeof(s) - 1] = '\0';
+
+			printf ("s msg = %s\nn", s);
 		}
+		else 
+			usage(argv[0]);
+	}
+	else		/* читаем строку из файла */
+	{
+		if ( (global_args.in_file = 
+					fopen(global_args.in_filename, "r")) == NULL)
+		{
+			printf("Ошибка чтения файла %s \n", 
+					global_args.in_filename);
+			return EXIT_FAILURE;
+		}
+		fscanf (global_args.in_file, "%s", s);
+		fclose(global_args.in_file);
+		printf ("s file = %s\n\n", s);
 	}
 
 
+	/*------------------------------------*/
+	/* Переменные для шифровки/дешифровки */
+	/*------------------------------------*/
+	// + 1 для терминального нуля в конце
+	char	result[strlen(s) + 1];		//Строка - результат
+	char	*key = global_args.key_string;		//Строка - ключ 
+	//char	*key_on_s = "";
+	char	key_on_s[strlen(s) + 1];
+	bool	flag;
+	int	x= 0, y = 0;		//Координаты нового символа из таблицы Виженера
+	int	registr = 0; //Регистр символа
+	char	dublicat; //Дубликат прописной буквы
+
+	key_on_s[0] = '\0' ;
+	result[0] = '\0' ;
+
+	/* Если ключ d не задан значит выбрана шифрация 
+	 */
+	switch (global_args.decryption)
+	{
+		case 0:
+		{
+			/*---------*/
+			/* Шифруем */
+			/*---------*/
+
+			/* Формирование строки, длиной шифруемой, 
+			 * состоящей из повторений ключа
+			 */
+			for (i = 0; i < strlen(s); i++)
+			{
+				size_t cur_len = strlen(key_on_s);
+				if(cur_len < strlen(s)) {
+					key_on_s[cur_len] = key[i % strlen(key)];
+					key_on_s[cur_len + 1] = '\0';
+				}
+			}
+
+			/* Шифрование при помощи таблицы */
+			for (i = 0; i < strlen(s); i++)
+			{
+				/* Если нешифруемый символ */
+				if (((int)(s[i]) < 65) || ((int)(s[i]) > 122))
+				{
+					size_t cur_len = strlen(result);
+					if(cur_len < strlen(s)) {
+						result[cur_len] = s[i];
+						result[cur_len + 1] = '\0';
+					}
+				}
+				else
+				{
+					/* Поиск в первом столбце строки, 
+					 * начинающейся с символа ключа
+					 */
+					int l = 0;
+					flag = false;
+
+					/* Пока не найден символ */
+					while ((l < 26) && (flag == false))
+					{
+						/* Если символ найден */
+						if (key_on_s[i] == tabula_recta[l][0])
+						{
+							/*Запоминаем в х номер строки */
+							x = l;
+							flag = true;
+						}
+						l++;
+					}
+					/* Уменьшаем временно регистр прописной буквы */
+					if (((int)(s[i]) <= 90) && ((int)(s[i]) >= 65))
+					{
+						dublicat = (char)((int)(s[i]) + 32);
+						registr = 1;
+					}
+					else
+					{
+						registr = 0;
+						dublicat = s[i];
+					}
+					l = 0;
+					flag = false;
+					/* Пока не найден столбец в первой строке 
+					 * с символом строки 
+					 */
+					while ((l < 26) && (flag == false))
+					{
+						if (dublicat == tabula_recta[0][l])
+						{
+							/* Запоминаем номер столбца */
+							y = l;
+							flag = true;
+						}
+						l++;
+					}
+					/* Увеличиваем регистр буквы до прописной */
+					if (registr == 1)
+					{
+						/* Изменяем символ на первоначальный 
+						 * регистр
+						 */
+						dublicat = tabula_recta[x][y] - 32;
+
+						/* допишем в result символ из dublicat
+						 * вычислим текущую длинну result 
+						 * и сравним с максимальной s 
+						 * код эквивалентен следующему выражению
+						 * result += dublicat;
+						 */
+						size_t cur_len = strlen(result);
+						if(cur_len < strlen(s)) {
+							result[cur_len] = dublicat;
+							result[cur_len + 1] = '\0';
+						}
+					}
+					else
+					{
+						size_t cur_len = strlen(result);
+						if(cur_len < strlen(s)) {
+							result[cur_len] = 
+								tabula_recta[x][y];
+							result[cur_len + 1] = '\0';
+						}
+					}
+				}
+			}
+			break;
+
+		}
+
+		case 1:
+		{
+			/*-----------*/
+			/* Дешифруем */
+			/*-----------*/
+
+			//Формирование строки, длиной дешифруемой, состоящей из повторений ключа
+			for (i = 0; i < strlen(s); i++)
+			{
+				size_t cur_len = strlen(key_on_s);
+				if(cur_len < strlen(s)) {
+					key_on_s[cur_len] = key[i % strlen(key)];
+					key_on_s[cur_len + 1] = '\0';
+				}
+			}
+			
+			//Дешифрование при помощи таблицы
+			for (i = 0; i < strlen(s); i++)
+			{
+				//Если нешифруемый символ
+				if (((int)(s[i]) < 65) || ((int)(s[i]) > 122))
+				{
+					size_t cur_len = strlen(result);
+					if(cur_len < strlen(s)) {
+						result[cur_len] = s[i];
+						result[cur_len + 1] = '\0';
+					}
+				}
+				else
+				{
+					//Поиск в первом столбце строки, начинающейся с символа ключа
+					int l = 0;
+					flag = false;
+				
+					//Пока не найден символ
+					while ((l < 26) && (flag == false))
+					{
+						//Если символ найден
+						if (key_on_s[i] == tabula_recta[l][0])
+						{
+							//Запоминаем в х номер строки
+							x = l;
+							flag = true;
+						}
+						l++;
+					}
+					//Уменьшаем временно регистр прописной буквы
+					if (((int)(s[i]) <= 90) && ((int)(s[i]) >= 65))
+					{
+						dublicat = (char)((int)(s[i]) + 32);
+						registr = 1;
+					}
+					else
+					{
+						registr = 0;
+						dublicat = s[i];
+					}
+					l = 0;
+					flag = false;
+					//Пока не найден столбец в x строке с символом строки
+					while ((l < 26) && (flag == false))
+					{
+						if (dublicat == tabula_recta[x][l])
+						{
+							//Запоминаем номер столбца
+							y = l;
+							flag = true;
+						}
+						l++;
+					}
+					//Увеличиваем регистр буквы до прописной
+					if (registr == 1)
+					{
+						//Изменяем символ на первоначальный регистр
+						dublicat = tabula_recta[0][y] - 32;
+						size_t cur_len = strlen(result);
+						if(cur_len < strlen(s)) {
+							result[cur_len] = dublicat;
+							result[cur_len + 1] = '\0';
+						}
+					}
+					else
+					{
+						size_t cur_len = strlen(result);
+						if(cur_len < strlen(s)) {
+							result[cur_len] = 
+								tabula_recta[0][y];
+							result[cur_len + 1] = '\0';
+						}
+					}
+				}
+			} 
+			break;
+		}
+			
+	}
+
+	/*-----------------------------------------*/
+	/* Вывод результата. В файл или на консоль */
+	/*-----------------------------------------*/
+
+	if (global_args.out_filename != NULL)	/* ключ -o задан */
+	{
+		if ( (global_args.out_file = 
+					fopen(global_args.out_filename, "w")) == NULL)
+		{
+			printf("Ошибка чтения файла %s \n", 
+					global_args.out_filename);
+			printf("Результат будет выведен сюда: \n");
+			printf("\nКлюч: %s\n", key);
+			printf("Сообщение: %s\n\n", result);
+			return EXIT_FAILURE;
+		}
+		fprintf(global_args.out_file, "%s\n", key);
+		fprintf(global_args.out_file, "%s\n", result);
+		fclose(global_args.out_file);	/* закрываем файл */
+	}
+	else
+	{
+		printf("\nКлюч: %s\n", key);
+		printf("Шифр: %s\n\n", result);
+	}
+	
 	return EXIT_SUCCESS;
 }
