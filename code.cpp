@@ -39,6 +39,9 @@
  *  ./a.out -k "RANDOM" -d -f "to_decode.txt"
  *  ./a.out -d -f "to_decode.txt" -k "RANDOM" -o "decoded.txt"
  *
+ * Сборка:
+ *
+ * g++ code.cpp -o code --std=c++11
  */
 
 #include <stdio.h>
@@ -219,7 +222,6 @@ int print_result (const char *key, const char *result)
 		printf("\nКлюч: %s\n", key);
 		printf("Шифр: %s\n\n", result);
 	}
-
 }
 
 /* Сообщение с информацией об опциях 
@@ -351,7 +353,6 @@ int main( int argc, char *argv[] )
 	// printf ("o = %s\n", global_args.out_filename);
 	// printf ("msg = %s\n", global_args.msg);
 
-
 	/* Создание таблицы Виженера на алфавите латиницы */
 
 	int shift = 0;
@@ -374,7 +375,6 @@ int main( int argc, char *argv[] )
 			tabula_recta[i][j] = alfabet[shift];
 		}
 	}
-
 
 	/*-----------------------------*/
 	/* Проверка входных параметров */
@@ -656,14 +656,11 @@ int main( int argc, char *argv[] )
 			} 
 			break;
 		}
-			
 	}
-
 	/*-----------------------------------------*/
 	/* Вывод результата. В файл или на консоль */
 	/*-----------------------------------------*/
 	print_result (key, result);
-
 
 	return EXIT_SUCCESS;
 }
