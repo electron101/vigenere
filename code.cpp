@@ -46,9 +46,141 @@
 #include <stdlib.h>		/* для EXIT_SUCCESS и EXIT_FAILURE */
 #include <unistd.h>		/* для функции getopt() */
 #include <ctype.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <array>
 
-#define MAXBUF  5000		/* максимальная длина буфера */
-typedef enum {false, true} bool;
+using namespace std;
+
+typedef array<pair<char, double>, 26> FreqArray;
+
+class VigenereAnalyser 
+{
+	private:
+		array<double, 26> targets;
+		array<double, 26> sortedTargets;
+		FreqArray freq;
+
+		// Update the freqs array
+		FreqArray& frequency(const string& input) 
+		{
+			for (char c = 'A'; c <= 'Z'; ++c)
+				freq[c - 'A'] = make_pair(c, 0);
+
+			for (size_t i = 0; i < input.size(); ++i)
+				freq[input[i] - 'A'].second++;
+
+			return freq;
+		}
+
+		double correlation(const string& input) 
+		{
+			double result = 0.0;
+			frequency(input);
+
+			sort(freq.begin(), freq.end(), [](pair<char, double> u, pair<char, double> v)->bool
+					{ return u.second < v.second; });
+
+			for (size_t i = 0; i < 26; ++i)
+				result += freq[i].second * sortedTargets[i];
+
+			return result;
+		}
+
+	public:
+		VigenereAnalyser(const array<double, 26>& targetFreqs) 
+		{
+			targets = targetFreqs;
+			sortedTargets = targets;
+			sort(sortedTargets.begin(), sortedTargets.end());
+		}
+
+		pair<string, string> analyze(string input) 
+		{
+			string cleaned;
+			for (size_t i = 0; i < input.size(); ++i) 
+			{
+				if (input[i] >= 'A' && input[i] <= 'Z')
+					cleaned += input[i];
+				else if (input[i] >= 'a' && input[i] <= 'z')
+					cleaned += input[i] + 'A' - 'a';
+			}
+
+			size_t bestLength = 0;
+			double bestCorr = -100.0;
+
+			// Assume that if there are less than 20 characters
+			// per column, the key's too long to guess
+			for (size_t i = 2; i < cleaned.size() / 20; ++i) 
+			{
+				vector<string> pieces(i);
+				for (size_t j = 0; j < cleaned.size(); ++j)
+					pieces[j % i] += cleaned[j];
+
+				// The correlation increases artificially for smaller
+				// pieces/longer keys, so weigh against them a little
+				double corr = -0.5*i;
+				for (size_t j = 0; j < i; ++j)
+					corr += correlation(pieces[j]);
+
+				if (corr > bestCorr) 
+				{
+					bestLength = i;
+					bestCorr = corr;
+				}
+			}
+
+			if (bestLength == 0)
+				return make_pair("Text is too short to analyze", "");
+
+			vector<string> pieces(bestLength);
+			for (size_t i = 0; i < cleaned.size(); ++i)
+				pieces[i % bestLength] += cleaned[i];
+
+			vector<FreqArray> freqs;
+			for (size_t i = 0; i < bestLength; ++i)
+				freqs.push_back(frequency(pieces[i]));
+
+			string key = "";
+			for (size_t i = 0; i < bestLength; ++i) 
+			{
+				sort(freqs[i].begin(), freqs[i].end(), [](pair<char, double> u, pair<char, double> v)->bool
+						{ return u.second > v.second; });
+
+				size_t m = 0;
+				double mCorr = 0.0;
+				for (size_t j = 0; j < 26; ++j) 
+				{
+					double corr = 0.0;
+					char c = 'A' + j;
+					for (size_t k = 0; k < 26; ++k) 
+					{
+						int d = (freqs[i][k].first - c + 26) % 26;
+						corr += freqs[i][k].second * targets[d];
+					}
+
+					if (corr > mCorr) 
+					{
+						m = j;
+						mCorr = corr;
+					}
+				}
+
+				key += m + 'A';
+			}
+
+			string result = "";
+			for (size_t i = 0; i < cleaned.size(); ++i)
+				result += (cleaned[i] - key[i % key.length()] + 26) % 26 + 'A';
+
+			return make_pair(result, key);
+		}
+};
+
+#define MAXBUF  50000		/* максимальная длина буфера */
 
 /* Глобальная структура с аргументами 
  */
@@ -64,7 +196,31 @@ struct global_args_t {
 
 static const char *opt_string = "k:df:o:eh?";	/* строка с опциями getopt() */
 
+int print_result (const char *key, const char *result)
+{
+	if (global_args.out_filename != NULL)	/* ключ -o задан */
+	{
+		if ( (global_args.out_file = 
+					fopen(global_args.out_filename, "w")) == NULL)
+		{
+			printf("Ошибка чтения файла %s \n", 
+					global_args.out_filename);
+			printf("Результат будет выведен сюда: \n");
+			printf("\nКлюч: %s\n", key);
+			printf("Сообщение: %s\n\n", result);
+			return EXIT_FAILURE;
+		}
+		fprintf(global_args.out_file, "%s\n", key);
+		fprintf(global_args.out_file, "%s\n", result);
+		fclose(global_args.out_file);	/* закрываем файл */
+	}
+	else
+	{
+		printf("\nКлюч: %s\n", key);
+		printf("Шифр: %s\n\n", result);
+	}
 
+}
 
 /* Сообщение с информацией об опциях 
  */
@@ -174,6 +330,13 @@ int main( int argc, char *argv[] )
 	int	j = 0;
 	char	s[MAXBUF];
 
+	array<double, 26> english = {
+		0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228,
+		0.02015, 0.06094, 0.06966, 0.00153, 0.00772, 0.04025,
+		0.02406, 0.06749, 0.07507, 0.01929, 0.00095, 0.05987,
+		0.06327, 0.09056, 0.02758, 0.00978, 0.02360, 0.00150,
+		0.01974, 0.00074};
+
 	for (i = optind; i < argc; i++)
 	{
 		if (argv[i][0] != '-') 
@@ -182,11 +345,11 @@ int main( int argc, char *argv[] )
 			break;
 		}
 	}
-	printf ("k = %s\n", global_args.key_string);
-	printf ("d = %d\n", global_args.decryption);
-	printf ("f = %s\n", global_args.in_filename);
-	printf ("o = %s\n", global_args.out_filename);
-	printf ("msg = %s\n", global_args.msg);
+	// printf ("k = %s\n", global_args.key_string);
+	// printf ("d = %d\n", global_args.decryption);
+	// printf ("f = %s\n", global_args.in_filename);
+	// printf ("o = %s\n", global_args.out_filename);
+	// printf ("msg = %s\n", global_args.msg);
 
 
 	/* Создание таблицы Виженера на алфавите латиницы */
@@ -216,13 +379,6 @@ int main( int argc, char *argv[] )
 	/*-----------------------------*/
 	/* Проверка входных параметров */
 	/*-----------------------------*/
-	if (global_args.key_string == NULL)	/* если -k не задан */
-	{
-		if (global_args.decryption == 0)
-			usage(argv[0]);
-		else
-			printf("код автоматической дешивровки");
-	}
 
 	/* Если задан ключ f и в тоже время указано сообщение
 	 */
@@ -240,7 +396,7 @@ int main( int argc, char *argv[] )
 			strncpy (s, global_args.msg, sizeof(s) - 1);
 			s[sizeof(s) - 1] = '\0';
 
-			printf ("s msg = %s\nn", s);
+			// printf ("s msg = %s\nn", s);
 		}
 		else 
 			usage(argv[0]);
@@ -256,9 +412,24 @@ int main( int argc, char *argv[] )
 		}
 		fscanf (global_args.in_file, "%s", s);
 		fclose(global_args.in_file);
-		printf ("s file = %s\n\n", s);
+		// printf ("s file = %s\n\n", s);
 	}
 
+	if (global_args.key_string == NULL)	/* если -k не задан */
+	{
+		if (global_args.decryption == 0)
+			usage(argv[0]);
+		else
+		{
+			/* код автоматической дешивровки */
+			VigenereAnalyser va(english);
+			pair<string, string> output = va.analyze(s);
+			
+			print_result (output.second.c_str(), output.first.c_str());
+			
+			return EXIT_SUCCESS;
+		}
+	}
 
 	/*------------------------------------*/
 	/* Переменные для шифровки/дешифровки */
@@ -491,28 +662,8 @@ int main( int argc, char *argv[] )
 	/*-----------------------------------------*/
 	/* Вывод результата. В файл или на консоль */
 	/*-----------------------------------------*/
+	print_result (key, result);
 
-	if (global_args.out_filename != NULL)	/* ключ -o задан */
-	{
-		if ( (global_args.out_file = 
-					fopen(global_args.out_filename, "w")) == NULL)
-		{
-			printf("Ошибка чтения файла %s \n", 
-					global_args.out_filename);
-			printf("Результат будет выведен сюда: \n");
-			printf("\nКлюч: %s\n", key);
-			printf("Сообщение: %s\n\n", result);
-			return EXIT_FAILURE;
-		}
-		fprintf(global_args.out_file, "%s\n", key);
-		fprintf(global_args.out_file, "%s\n", result);
-		fclose(global_args.out_file);	/* закрываем файл */
-	}
-	else
-	{
-		printf("\nКлюч: %s\n", key);
-		printf("Шифр: %s\n\n", result);
-	}
-	
+
 	return EXIT_SUCCESS;
 }
